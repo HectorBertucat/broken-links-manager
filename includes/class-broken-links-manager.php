@@ -49,16 +49,28 @@ class Broken_Links_Manager {
     public function ajax_scan_links() {
         check_ajax_referer('broken_links_manager_nonce', 'security');
 
-        $scanner = new Broken_Links_Scanner(new Logger());
+        $logger = new Logger();
+        $logger->log('Scan initiated via AJAX');
+
+        $scanner = new Broken_Links_Scanner($logger);
         $background_process = new Broken_Links_Background_Process();
         
         $posts = get_posts(array('posts_per_page' => -1, 'post_type' => 'any'));
+        $logger->log('Found ' . count($posts) . ' posts to scan');
+
         foreach ($posts as $post) {
             $background_process->push_to_queue($post);
         }
-        $background_process->save()->dispatch();
-
-        wp_send_json_success('Scan initiated. It will run in the background.');
+        
+        $dispatched = $background_process->save()->dispatch();
+        
+        if ($dispatched) {
+            $logger->log('Background process dispatched successfully');
+            wp_send_json_success('Scan initiated. It will run in the background.');
+        } else {
+            $logger->log('Failed to dispatch background process');
+            wp_send_json_error('Failed to initiate scan. Please check server logs.');
+        }
     }
 
     public function ajax_remove_link() {

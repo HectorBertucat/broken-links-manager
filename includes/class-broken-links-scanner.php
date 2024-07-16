@@ -45,30 +45,41 @@ class Broken_Links_Scanner {
         }
     }
 
-    private function scan_post_content($post) {
-        if (empty($post->post_content)) {
-            $this->logger->log("Skipping empty post content for post ID: {$post->ID}");
-            return;
+    public function scan_post_content($post) {
+        $this->logger->log("Scanning post ID: {$post->ID}");
+
+        $content = $post->post_content;
+        if (empty($content)) {
+            $this->logger->log("Post {$post->ID} has no content to scan.");
+            return false;
         }
-        
+
         $dom = new DOMDocument();
-        @$dom->loadHTML($post->post_content);
+        @$dom->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'));
         $links = $dom->getElementsByTagName('a');
+
+        $broken_links_found = false;
 
         foreach ($links as $link) {
             $href = $link->getAttribute('href');
             if ($href) {
+                $this->logger->log("Checking link: {$href}");
                 $status_code = $this->check_link_status($href);
+                $this->logger->log("Status code for {$href}: {$status_code}");
                 if ($status_code >= 400) {
                     $this->store_broken_link($post->ID, $href, $status_code);
+                    $broken_links_found = true;
                 }
             }
         }
+
+        return $broken_links_found;
     }
 
     private function check_link_status($url) {
-        $response = wp_remote_head($url, array('timeout' => 5));
+        $response = wp_remote_head($url, array('timeout' => 5, 'sslverify' => false));
         if (is_wp_error($response)) {
+            $this->logger->log("Error checking {$url}: " . $response->get_error_message());
             return 500; // Assume server error if we can't reach the URL
         }
         return wp_remote_retrieve_response_code($response);
@@ -76,7 +87,7 @@ class Broken_Links_Scanner {
 
     private function store_broken_link($post_id, $url, $status_code) {
         $table_name = $this->db->prefix . 'broken_links';
-        $this->db->insert(
+        $result = $this->db->insert(
             $table_name,
             array(
                 'post_id' => $post_id,
@@ -86,6 +97,11 @@ class Broken_Links_Scanner {
             ),
             array('%d', '%s', '%d', '%s')
         );
-        $this->logger->log("Broken link found: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
+
+        if ($result) {
+            $this->logger->log("Stored broken link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
+        } else {
+            $this->logger->log("Failed to store broken link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
+        }
     }
 }

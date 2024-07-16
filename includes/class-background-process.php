@@ -9,17 +9,22 @@ class Broken_Links_Background_Process extends BLM_WP_Background_Process {
     protected $action = 'broken_links_scan';
 
     protected function task($item) {
-        // Ensure required classes are loaded
-        if (!class_exists('Broken_Links_Scanner')) {
-            require_once plugin_dir_path(__FILE__) . 'class-broken-links-scanner.php';
-        }
-        if (!class_exists('Logger')) {
-            require_once plugin_dir_path(__FILE__) . 'class-logger.php';
-        }
+        $logger = new Logger();
+        $logger->log("Processing item: " . $item->ID);
 
-        // Process a single item here
-        $scanner = new Broken_Links_Scanner(new Logger());
-        $scanner->scan_post_content($item);
+        try {
+            // Ensure required classes are loaded
+            if (!class_exists('Broken_Links_Scanner')) {
+                require_once plugin_dir_path(__FILE__) . 'class-broken-links-scanner.php';
+            }
+
+            $scanner = new Broken_Links_Scanner($logger);
+            $result = $scanner->scan_post_content($item);
+            
+            $logger->log("Scan result for post {$item->ID}: " . ($result ? "Links found" : "No broken links found"));
+        } catch (Exception $e) {
+            $logger->log("Error processing post {$item->ID}: " . $e->getMessage());
+        }
 
         return false; // False to remove the item from the queue
     }
