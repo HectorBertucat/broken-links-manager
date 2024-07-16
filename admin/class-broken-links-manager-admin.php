@@ -16,6 +16,10 @@ class Broken_Links_Manager_Admin {
 
     public function enqueue_scripts() {
         wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/broken-links-manager-admin.js', array('jquery'), $this->version, false);
+        wp_localize_script($this->plugin_name, 'broken_links_manager_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'security' => wp_create_nonce('broken_links_manager_nonce')
+        ));
     }
 
     public function add_plugin_admin_menu() {

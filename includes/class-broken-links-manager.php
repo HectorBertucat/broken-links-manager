@@ -7,23 +7,25 @@ class Broken_Links_Manager {
     protected $version;
 
     public function __construct() {
-        $this->plugin_name = 'broken-links-manager';
-        $this->version = BROKEN_LINKS_MANAGER_VERSION;
-        
-        if ($this->check_requirements()) {
-            $this->load_dependencies();
-            $this->define_admin_hooks();
-            $this->define_ajax_hooks();
+        if (defined('BROKEN_LINKS_MANAGER_VERSION')) {
+            $this->version = BROKEN_LINKS_MANAGER_VERSION;
+        } else {
+            $this->version = '1.0.0';
         }
+        $this->plugin_name = 'broken-links-manager';
+
+        $this->load_dependencies();
+        $this->define_admin_hooks();
+        $this->define_ajax_hooks();
     }
 
     private function load_dependencies() {
-        require_once BROKEN_LINKS_MANAGER_PLUGIN_DIR . 'includes/class-broken-links-manager-loader.php';
-        require_once BROKEN_LINKS_MANAGER_PLUGIN_DIR . 'includes/class-broken-links-scanner.php';
-        require_once BROKEN_LINKS_MANAGER_PLUGIN_DIR . 'includes/class-broken-links-remover.php';
-        require_once BROKEN_LINKS_MANAGER_PLUGIN_DIR . 'includes/class-logger.php';
-        require_once BROKEN_LINKS_MANAGER_PLUGIN_DIR . 'includes/class-background-process.php';
-        require_once BROKEN_LINKS_MANAGER_PLUGIN_DIR . 'admin/class-broken-links-manager-admin.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-broken-links-manager-loader.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-broken-links-scanner.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-broken-links-remover.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-logger.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-background-process.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-broken-links-manager-admin.php';
 
         $this->loader = new Broken_Links_Manager_Loader();
     }
@@ -41,6 +43,7 @@ class Broken_Links_Manager {
         $this->loader->add_action('wp_ajax_remove_link', $this, 'ajax_remove_link');
         $this->loader->add_action('wp_ajax_bulk_remove_links', $this, 'ajax_bulk_remove_links');
         $this->loader->add_action('wp_ajax_get_logs', $this, 'ajax_get_logs');
+        $this->loader->add_action('wp_ajax_get_broken_links', $this, 'ajax_get_broken_links');
     }
 
     public function ajax_scan_links() {
@@ -98,6 +101,27 @@ class Broken_Links_Manager {
         wp_send_json_success($logs);
     }
 
+    public function ajax_get_broken_links() {
+        check_ajax_referer('broken_links_manager_nonce', 'security');
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'broken_links';
+        $links = $wpdb->get_results("SELECT * FROM $table_name ORDER BY found_date DESC");
+
+        $html = '';
+        foreach ($links as $link) {
+            $html .= "<tr>";
+            $html .= "<td>{$link->post_id}</td>";
+            $html .= "<td>{$link->url}</td>";
+            $html .= "<td>{$link->status_code}</td>";
+            $html .= "<td>{$link->found_date}</td>";
+            $html .= "<td><button class='button blm-remove-link' data-post-id='{$link->post_id}' data-url='{$link->url}'>Remove</button></td>";
+            $html .= "</tr>";
+        }
+
+        wp_send_json_success($html);
+    }
+
     public function run() {
         $this->loader->run();
     }
@@ -108,29 +132,5 @@ class Broken_Links_Manager {
 
     public function get_version() {
         return $this->version;
-    }
-
-    private function check_requirements() {
-        $required_extensions = array('dom', 'mbstring');
-        $missing_extensions = array();
-    
-        foreach ($required_extensions as $ext) {
-            if (!extension_loaded($ext)) {
-                $missing_extensions[] = $ext;
-            }
-        }
-    
-        if (!empty($missing_extensions)) {
-            add_action('admin_notices', function() use ($missing_extensions) {
-                $message = sprintf(
-                    __('Broken Links Manager requires the following PHP extensions: %s. Please contact your hosting provider to enable them.', 'broken-links-manager'),
-                    implode(', ', $missing_extensions)
-                );
-                echo '<div class="error"><p>' . $message . '</p></div>';
-            });
-            return false;
-        }
-    
-        return true;
     }
 }

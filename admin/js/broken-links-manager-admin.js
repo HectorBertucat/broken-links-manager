@@ -14,14 +14,18 @@
                     $('#blm-scan-links').prop('disabled', true).text('Scanning...');
                 },
                 success: function(response) {
-                    alert(response.data);
-                    location.reload();
+                    if (response.success) {
+                        alert(response.data);
+                    } else {
+                        alert('Error: ' + response.data);
+                    }
                 },
-                error: function() {
-                    alert('An error occurred while scanning links.');
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert('An error occurred: ' + textStatus + ' - ' + errorThrown);
                 },
                 complete: function() {
                     $('#blm-scan-links').prop('disabled', false).text('Scan for Broken Links');
+                    updateResults();
                 }
             });
         });
@@ -49,8 +53,8 @@
                         alert('Failed to remove link: ' + response.data);
                     }
                 },
-                error: function() {
-                    alert('An error occurred while removing the link.');
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert('An error occurred: ' + textStatus + ' - ' + errorThrown);
                 }
             });
         });
@@ -70,17 +74,42 @@
                     $('#blm-bulk-remove').prop('disabled', true).text('Removing...');
                 },
                 success: function(response) {
-                    alert(response.data);
-                    location.reload();
+                    if (response.success) {
+                        alert(response.data);
+                        updateResults();
+                    } else {
+                        alert('Error: ' + response.data);
+                    }
                 },
-                error: function() {
-                    alert('An error occurred while removing links.');
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert('An error occurred: ' + textStatus + ' - ' + errorThrown);
                 },
                 complete: function() {
                     $('#blm-bulk-remove').prop('disabled', false).text('Remove All Links with Selected Status Code');
                 }
             });
         });
+
+        function updateResults() {
+            $.ajax({
+                url: broken_links_manager_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'get_broken_links',
+                    security: broken_links_manager_ajax.security
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#blm-results-body').html(response.data);
+                    } else {
+                        alert('Error updating results: ' + response.data);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert('An error occurred while updating results: ' + textStatus + ' - ' + errorThrown);
+                }
+            });
+        }
 
         function updateLogs() {
             $.ajax({
@@ -93,13 +122,22 @@
                 success: function(response) {
                     if (response.success) {
                         $('#blm-log-display').val(response.data.join('\n'));
+                    } else {
+                        console.error('Error updating logs: ' + response.data);
                     }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('An error occurred while updating logs: ' + textStatus + ' - ' + errorThrown);
                 }
             });
         }
 
         // Update logs every 5 seconds
         setInterval(updateLogs, 5000);
+
+        // Initial update of results and logs
+        updateResults();
+        updateLogs();
     });
 
 })(jQuery);
