@@ -4,7 +4,7 @@
 require_once plugin_dir_path(__FILE__) . '../lib/classes/wp-async-request.php';
 require_once plugin_dir_path(__FILE__) . '../lib/classes/wp-background-process.php';
 
-class Broken_Links_Background_Process extends WP_Background_Process {
+class Broken_Links_Background_Process extends BLM_WP_Background_Process {
     
     protected $action = 'broken_links_scan';
 
