@@ -1,30 +1,36 @@
 <?php
 
-if (!class_exists('WP_Async_Request')) {
-    require_once(ABSPATH . 'wp-admin/includes/class-wp-async-request.php');
-}
-
-if (!class_exists('WP_Background_Process')) {
-    require_once(ABSPATH . 'wp-admin/includes/class-wp-background-process.php');
-}
+// Include the WP Background Process library
+require_once plugin_dir_path(__FILE__) . '../lib/classes/wp-async-request.php';
+require_once plugin_dir_path(__FILE__) . '../lib/classes/wp-background-process.php';
 
 class Broken_Links_Background_Process extends WP_Background_Process {
+    
     protected $action = 'broken_links_scan';
 
     protected function task($item) {
-        try {
-            $scanner = new Broken_Links_Scanner(new Logger());
-            $scanner->scan_post_content($item);
-        } catch (Exception $e) {
-            $logger = new Logger();
-            $logger->log("Error processing post ID {$item->ID}: " . $e->getMessage());
+        // Ensure required classes are loaded
+        if (!class_exists('Broken_Links_Scanner')) {
+            require_once plugin_dir_path(__FILE__) . 'class-broken-links-scanner.php';
         }
-    
-        return false;
+        if (!class_exists('Logger')) {
+            require_once plugin_dir_path(__FILE__) . 'class-logger.php';
+        }
+
+        // Process a single item here
+        $scanner = new Broken_Links_Scanner(new Logger());
+        $scanner->scan_post_content($item);
+
+        return false; // False to remove the item from the queue
     }
 
     protected function complete() {
         parent::complete();
+
+        // Ensure Logger class is loaded
+        if (!class_exists('Logger')) {
+            require_once plugin_dir_path(__FILE__) . 'class-logger.php';
+        }
 
         // Log the completion of the background process
         $logger = new Logger();
