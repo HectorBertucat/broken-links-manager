@@ -44,6 +44,7 @@ class Broken_Links_Manager {
         $this->loader->add_action('wp_ajax_bulk_remove_links', $this, 'ajax_bulk_remove_links');
         $this->loader->add_action('wp_ajax_get_logs', $this, 'ajax_get_logs');
         $this->loader->add_action('wp_ajax_get_broken_links', $this, 'ajax_get_broken_links');
+        $this->loader->add_action('wp_ajax_check_scan_status', $this, 'ajax_check_scan_status');
     }
 
     public function ajax_scan_links() {
@@ -132,6 +133,34 @@ class Broken_Links_Manager {
         }
 
         wp_send_json_success($html);
+    }
+
+    public function ajax_check_scan_status() {
+        check_ajax_referer('broken_links_manager_nonce', 'security');
+
+        $logger = new Logger();
+        $logs = $logger->get_logs(10); // Get the last 10 log entries
+
+        $status = 'unknown';
+        $message = 'Unable to determine scan status.';
+
+        foreach ($logs as $log) {
+            if (strpos($log, 'Background process: Broken links scan completed') !== false) {
+                $status = 'completed';
+                $message = 'Scan completed.';
+                break;
+            } elseif (strpos($log, 'Background process: Handle method called') !== false) {
+                $status = 'in_progress';
+                $message = 'Scan in progress.';
+                break;
+            }
+        }
+
+        wp_send_json_success(array(
+            'status' => $status,
+            'message' => $message,
+            'logs' => $logs
+        ));
     }
 
     public function run() {

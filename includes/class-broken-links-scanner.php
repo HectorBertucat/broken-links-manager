@@ -46,11 +46,11 @@ class Broken_Links_Scanner {
     }
 
     public function scan_post_content($post) {
-        $this->logger->log("Scanning post ID: {$post->ID}");
+        $this->logger->log("Scanner: Starting scan for post ID: {$post->ID}");
 
         $content = $post->post_content;
         if (empty($content)) {
-            $this->logger->log("Post {$post->ID} has no content to scan.");
+            $this->logger->log("Scanner: Post {$post->ID} has no content to scan.");
             return false;
         }
 
@@ -58,14 +58,16 @@ class Broken_Links_Scanner {
         @$dom->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'));
         $links = $dom->getElementsByTagName('a');
 
+        $this->logger->log("Scanner: Found " . $links->length . " links in post {$post->ID}");
+
         $broken_links_found = false;
 
         foreach ($links as $link) {
             $href = $link->getAttribute('href');
             if ($href) {
-                $this->logger->log("Checking link: {$href}");
+                $this->logger->log("Scanner: Checking link: {$href}");
                 $status_code = $this->check_link_status($href);
-                $this->logger->log("Status code for {$href}: {$status_code}");
+                $this->logger->log("Scanner: Status code for {$href}: {$status_code}");
                 if ($status_code >= 400) {
                     $this->store_broken_link($post->ID, $href, $status_code);
                     $broken_links_found = true;
@@ -73,19 +75,24 @@ class Broken_Links_Scanner {
             }
         }
 
+        $this->logger->log("Scanner: Completed scan for post ID: {$post->ID}. Broken links found: " . ($broken_links_found ? "Yes" : "No"));
         return $broken_links_found;
     }
 
     private function check_link_status($url) {
+        $this->logger->log("Scanner: Checking status for URL: {$url}");
         $response = wp_remote_head($url, array('timeout' => 5, 'sslverify' => false));
         if (is_wp_error($response)) {
-            $this->logger->log("Error checking {$url}: " . $response->get_error_message());
+            $this->logger->log("Scanner: Error checking {$url}: " . $response->get_error_message());
             return 500; // Assume server error if we can't reach the URL
         }
-        return wp_remote_retrieve_response_code($response);
+        $status_code = wp_remote_retrieve_response_code($response);
+        $this->logger->log("Scanner: Status code received for {$url}: {$status_code}");
+        return $status_code;
     }
 
     private function store_broken_link($post_id, $url, $status_code) {
+        $this->logger->log("Scanner: Storing broken link for post ID: {$post_id}, URL: {$url}, Status Code: {$status_code}");
         $table_name = $this->db->prefix . 'broken_links';
         $result = $this->db->insert(
             $table_name,
@@ -99,9 +106,9 @@ class Broken_Links_Scanner {
         );
 
         if ($result) {
-            $this->logger->log("Stored broken link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
+            $this->logger->log("Scanner: Successfully stored broken link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
         } else {
-            $this->logger->log("Failed to store broken link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
+            $this->logger->log("Scanner: Failed to store broken link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
         }
     }
 }

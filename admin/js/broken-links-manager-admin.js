@@ -16,6 +16,7 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.data);
+                        checkScanStatus();
                     } else {
                         alert('Error: ' + response.data);
                     }
@@ -128,6 +129,33 @@
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('An error occurred while updating logs: ' + textStatus + ' - ' + errorThrown);
+                }
+            });
+        }
+
+        function checkScanStatus() {
+            $.ajax({
+                url: broken_links_manager_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'check_scan_status',
+                    security: broken_links_manager_ajax.security
+                },
+                success: function(response) {
+                    if (response.success) {
+                        updateLogDisplay(response.data.logs);
+                        if (response.data.status === 'completed') {
+                            alert('Scan completed!');
+                            updateResults();
+                        } else if (response.data.status === 'in_progress') {
+                            setTimeout(checkScanStatus, 5000); // Check again in 5 seconds
+                        }
+                    } else {
+                        console.error('Failed to check scan status');
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('An error occurred while checking scan status: ' + textStatus + ' - ' + errorThrown);
                 }
             });
         }
