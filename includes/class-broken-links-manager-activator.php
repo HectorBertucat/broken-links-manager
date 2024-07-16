@@ -25,6 +25,8 @@ class Broken_Links_Manager_Activator {
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
+        
+        add_option('broken_links_manager_version', BROKEN_LINKS_MANAGER_VERSION);
     }
 
     private static function set_default_options() {

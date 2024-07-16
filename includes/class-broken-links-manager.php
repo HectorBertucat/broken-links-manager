@@ -54,24 +54,20 @@ class Broken_Links_Manager {
         $logger->log('Scan initiated via AJAX');
 
         $scanner = new Broken_Links_Scanner($logger);
-        $background_process = new Broken_Links_Background_Process();
         
         $posts = get_posts(array('posts_per_page' => -1, 'post_type' => 'any'));
         $logger->log('Found ' . count($posts) . ' posts to scan');
 
+        $links_found = 0;
+
         foreach ($posts as $post) {
-            $background_process->push_to_queue($post);
+            if ($scanner->scan_post_content($post)) {
+                $links_found++;
+            }
         }
         
-        $dispatched = $background_process->save()->dispatch();
-        
-        if ($dispatched) {
-            $logger->log('Background process dispatched successfully');
-            wp_send_json_success('Scan initiated. It will run in the background.');
-        } else {
-            $logger->log('Failed to dispatch background process');
-            wp_send_json_error('Failed to initiate scan. Please check server logs.');
-        }
+        $logger->log("Scan completed. Found links in {$links_found} posts.");
+        wp_send_json_success("Scan completed. Found links in {$links_found} posts.");
     }
 
     public function ajax_remove_link() {

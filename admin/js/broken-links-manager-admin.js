@@ -16,7 +16,7 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.data);
-                        checkScanStatus();
+                        updateResults();
                     } else {
                         alert('Error: ' + response.data);
                     }
