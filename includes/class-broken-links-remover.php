@@ -11,6 +11,17 @@ class Broken_Links_Remover {
     }
 
     public function remove_link($post_id, $url) {
+        if (!$post) {
+            $this->logger->log("Error: Post with ID {$post_id} not found.");
+            return false;
+        }
+    
+        $content = $post->post_content;
+        if (strpos($content, $url) === false) {
+            $this->logger->log("Error: URL {$url} not found in post ID {$post_id}.");
+            return false;
+        }
+
         $post = get_post($post_id);
         if (!$post) {
             $this->logger->log("Error: Post with ID {$post_id} not found.");

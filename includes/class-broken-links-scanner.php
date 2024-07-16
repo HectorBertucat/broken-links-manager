@@ -46,6 +46,11 @@ class Broken_Links_Scanner {
     }
 
     private function scan_post_content($post) {
+        if (empty($post->post_content)) {
+            $this->logger->log("Skipping empty post content for post ID: {$post->ID}");
+            return;
+        }
+        
         $dom = new DOMDocument();
         @$dom->loadHTML($post->post_content);
         $links = $dom->getElementsByTagName('a');

@@ -12,11 +12,15 @@ class Broken_Links_Background_Process extends WP_Background_Process {
     protected $action = 'broken_links_scan';
 
     protected function task($item) {
-        // Process a single item here
-        $scanner = new Broken_Links_Scanner(new Logger());
-        $scanner->scan_post_content($item);
-
-        return false; // False to remove the item from the queue
+        try {
+            $scanner = new Broken_Links_Scanner(new Logger());
+            $scanner->scan_post_content($item);
+        } catch (Exception $e) {
+            $logger = new Logger();
+            $logger->log("Error processing post ID {$item->ID}: " . $e->getMessage());
+        }
+    
+        return false;
     }
 
     protected function complete() {
