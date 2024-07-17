@@ -21,9 +21,17 @@
 
     <div id="blm-results">
         <h2>Scanned Links</h2>
+        <div id="blm-bulk-actions">
+            <select id="blm-bulk-action">
+                <option value="">Bulk Actions</option>
+                <option value="remove">Remove Selected</option>
+            </select>
+            <button id="blm-apply-bulk-action" class="button">Apply</button>
+        </div>
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="blm-select-all"></th>
                     <th>Post ID</th>
                     <th>URL</th>
                     <th>Status Code</th>

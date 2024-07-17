@@ -60,6 +60,29 @@
             });
         });
 
+        $('#blm-select-all').on('change', function() {
+            $('.blm-link-checkbox').prop('checked', this.checked);
+        });
+
+        $('#blm-apply-bulk-action').on('click', function() {
+            var action = $('#blm-bulk-action').val();
+            if (action === 'remove') {
+                var selectedLinks = $('.blm-link-checkbox:checked');
+                if (selectedLinks.length === 0) {
+                    alert('Please select at least one link to remove.');
+                    return;
+                }
+
+                if (confirm('Are you sure you want to remove the selected links?')) {
+                    selectedLinks.each(function() {
+                        var postId = $(this).data('post-id');
+                        var url = $(this).data('url');
+                        removeLink(postId, url, $(this).closest('tr'));
+                    });
+                }
+            }
+        });
+
         $('#blm-bulk-remove').on('click', function() {
             var statusCode = $('#blm-status-code').val();
 
@@ -133,29 +156,27 @@
             });
         }
 
-        function checkScanStatus() {
+        function removeLink(postId, url, row) {
             $.ajax({
                 url: broken_links_manager_ajax.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'check_scan_status',
-                    security: broken_links_manager_ajax.security
+                    action: 'remove_link',
+                    security: broken_links_manager_ajax.security,
+                    post_id: postId,
+                    url: url
                 },
                 success: function(response) {
                     if (response.success) {
-                        updateLogDisplay(response.data.logs);
-                        if (response.data.status === 'completed') {
-                            alert('Scan completed!');
-                            updateResults();
-                        } else if (response.data.status === 'in_progress') {
-                            setTimeout(checkScanStatus, 5000); // Check again in 5 seconds
-                        }
+                        row.fadeOut(400, function() {
+                            $(this).remove();
+                        });
                     } else {
-                        console.error('Failed to check scan status');
+                        alert('Failed to remove link: ' + response.data);
                     }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
-                    console.error('An error occurred while checking scan status: ' + textStatus + ' - ' + errorThrown);
+                    alert('An error occurred: ' + textStatus + ' - ' + errorThrown);
                 }
             });
         }

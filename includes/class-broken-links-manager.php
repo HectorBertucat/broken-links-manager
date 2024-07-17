@@ -80,10 +80,18 @@ class Broken_Links_Manager {
         $post_id = intval($_POST['post_id']);
         $url = sanitize_text_field($_POST['url']);
 
-        $remover = new Broken_Links_Remover(new Logger());
-        $result = $remover->remove_link($post_id, $url);
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'broken_links';
+        $result = $wpdb->delete(
+            $table_name,
+            array(
+                'post_id' => $post_id,
+                'url' => $url
+            ),
+            array('%d', '%s')
+        );
 
-        if ($result) {
+        if ($result !== false) {
             wp_send_json_success('Link removed successfully.');
         } else {
             wp_send_json_error('Failed to remove link.');
@@ -123,13 +131,14 @@ class Broken_Links_Manager {
 
         $html = '';
         foreach ($links as $link) {
-            $status_class = $link->status_code >= 400 ? 'broken' : 'working';
+            $status_class = ($link->status_code >= 400 || $link->status_code == 0) ? 'broken' : 'working';
             $html .= "<tr class='$status_class'>";
+            $html .= "<td><input type='checkbox' class='blm-link-checkbox' data-post-id='{$link->post_id}' data-url='" . esc_attr($link->url) . "'></td>";
             $html .= "<td>{$link->post_id}</td>";
-            $html .= "<td>{$link->url}</td>";
+            $html .= "<td>" . esc_html($link->url) . "</td>";
             $html .= "<td>{$link->status_code}</td>";
             $html .= "<td>{$link->found_date}</td>";
-            $html .= "<td><button class='button blm-remove-link' data-post-id='{$link->post_id}' data-url='{$link->url}'>Remove</button></td>";
+            $html .= "<td><button class='button blm-remove-link' data-post-id='{$link->post_id}' data-url='" . esc_attr($link->url) . "'>Remove</button></td>";
             $html .= "</tr>";
         }
 
