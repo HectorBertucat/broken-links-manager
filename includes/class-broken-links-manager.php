@@ -67,6 +67,10 @@ class Broken_Links_Manager {
         }
         
         $logger->log("Scan completed. Found links in {$links_found} posts.");
+        
+        // Verify stored links
+        $scanner->verify_stored_links();
+
         wp_send_json_success("Scan completed. Found links in {$links_found} posts.");
     }
 
@@ -115,11 +119,12 @@ class Broken_Links_Manager {
 
         global $wpdb;
         $table_name = $wpdb->prefix . 'broken_links';
-        $links = $wpdb->get_results("SELECT * FROM $table_name ORDER BY found_date DESC");
+        $links = $wpdb->get_results("SELECT * FROM $table_name ORDER BY found_date DESC LIMIT 1000");
 
         $html = '';
         foreach ($links as $link) {
-            $html .= "<tr>";
+            $status_class = $link->status_code >= 400 ? 'broken' : 'working';
+            $html .= "<tr class='$status_class'>";
             $html .= "<td>{$link->post_id}</td>";
             $html .= "<td>{$link->url}</td>";
             $html .= "<td>{$link->status_code}</td>";

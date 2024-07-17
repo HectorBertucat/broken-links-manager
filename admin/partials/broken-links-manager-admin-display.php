@@ -16,11 +16,11 @@
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
     <div id="blm-actions">
-        <button id="blm-scan-links" class="button button-primary">Scan for Broken Links</button>
+        <button id="blm-scan-links" class="button button-primary">Scan for Links</button>
     </div>
 
     <div id="blm-results">
-        <h2>Broken Links</h2>
+        <h2>Scanned Links</h2>
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>

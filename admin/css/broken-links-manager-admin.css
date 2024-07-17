@@ -24,6 +24,14 @@
     font-weight: bold;
 }
 
+#blm-results tr.broken {
+    background-color: #ffecec;
+}
+
+#blm-results tr.working {
+    background-color: #ecffec;
+}
+
 #blm-bulk-actions {
     margin-top: 20px;
 }

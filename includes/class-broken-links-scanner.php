@@ -109,4 +109,16 @@ class Broken_Links_Scanner {
             $this->logger->log("Scanner: Failed to store link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
         }
     }
+
+    public function verify_stored_links() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'broken_links';
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+        $this->logger->log("Verification: Total links stored in database: $count");
+
+        $sample = $wpdb->get_results("SELECT * FROM $table_name LIMIT 5");
+        foreach ($sample as $link) {
+            $this->logger->log("Verification: Sample link - Post ID: {$link->post_id}, URL: {$link->url}, Status Code: {$link->status_code}");
+        }
+    }
 }
