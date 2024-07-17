@@ -47,11 +47,20 @@ class Broken_Links_Manager {
         $this->loader->add_action('wp_ajax_check_scan_status', $this, 'ajax_check_scan_status');
     }
 
+    private function clear_existing_links() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'broken_links';
+        $wpdb->query("TRUNCATE TABLE $table_name");
+    }
+
     public function ajax_scan_links() {
         check_ajax_referer('broken_links_manager_nonce', 'security');
 
         $logger = new Logger();
         $logger->log('Scan initiated via AJAX');
+
+        // Clear existing links before new scan
+        $this->clear_existing_links();
 
         $scanner = new Broken_Links_Scanner($logger);
         
@@ -67,10 +76,6 @@ class Broken_Links_Manager {
         }
         
         $logger->log("Scan completed. Found links in {$links_found} posts.");
-        
-        // Verify stored links
-        $scanner->verify_stored_links();
-
         wp_send_json_success("Scan completed. Found links in {$links_found} posts.");
     }
 
@@ -80,18 +85,10 @@ class Broken_Links_Manager {
         $post_id = intval($_POST['post_id']);
         $url = sanitize_text_field($_POST['url']);
 
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'broken_links';
-        $result = $wpdb->delete(
-            $table_name,
-            array(
-                'post_id' => $post_id,
-                'url' => $url
-            ),
-            array('%d', '%s')
-        );
+        $remover = new Broken_Links_Remover(new Logger());
+        $result = $remover->remove_link($post_id, $url);
 
-        if ($result !== false) {
+        if ($result) {
             wp_send_json_success('Link removed successfully.');
         } else {
             wp_send_json_error('Failed to remove link.');
@@ -101,16 +98,11 @@ class Broken_Links_Manager {
     public function ajax_bulk_remove_links() {
         check_ajax_referer('broken_links_manager_nonce', 'security');
 
-        $status_code = intval($_POST['status_code']);
-
+        $links = $_POST['links'];
         $remover = new Broken_Links_Remover(new Logger());
-        $result = $remover->bulk_remove_links($status_code);
+        $remover->bulk_remove_links($links);
 
-        if ($result) {
-            wp_send_json_success("All links with status code {$status_code} removed successfully.");
-        } else {
-            wp_send_json_error("Failed to remove links with status code {$status_code}.");
-        }
+        wp_send_json_success('Bulk removal completed.');
     }
 
     public function ajax_get_logs() {

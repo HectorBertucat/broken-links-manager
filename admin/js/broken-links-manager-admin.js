@@ -74,11 +74,14 @@
                 }
 
                 if (confirm('Are you sure you want to remove the selected links?')) {
+                    var links = [];
                     selectedLinks.each(function() {
-                        var postId = $(this).data('post-id');
-                        var url = $(this).data('url');
-                        removeLink(postId, url, $(this).closest('tr'));
+                        links.push({
+                            post_id: $(this).data('post-id'),
+                            url: $(this).data('url')
+                        });
                     });
+                    bulkRemoveLinks(links);
                 }
             }
         });
@@ -152,6 +155,29 @@
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error('An error occurred while updating logs: ' + textStatus + ' - ' + errorThrown);
+                }
+            });
+        }
+
+        function bulkRemoveLinks(links) {
+            $.ajax({
+                url: broken_links_manager_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'bulk_remove_links',
+                    security: broken_links_manager_ajax.security,
+                    links: links
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Selected links removed successfully.');
+                        updateResults();
+                    } else {
+                        alert('Failed to remove links: ' + response.data);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    alert('An error occurred: ' + textStatus + ' - ' + errorThrown);
                 }
             });
         }
