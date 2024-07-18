@@ -27,11 +27,9 @@ if (!defined('ABSPATH')) exit;
                 $broken_links = $this->get_broken_links();
                 foreach ($broken_links as $link) {
                     echo "<tr>";
-                    echo "<td>{$link->post_id}</td>";
-                    echo "<td>{$link->url}</td>";
+                    echo "<td><a href\"{$link->post_id}\"></a>{$link->post_id}</td>";
                     echo "<td>{$link->status_code}</td>";
                     echo "<td>{$link->found_date}</td>";
-                    echo "<td><button class='button blm-remove-link' data-post-id='{$link->post_id}' data-url='{$link->url}'>Remove</button></td>";
                     echo "</tr>";
                 }
                 ?>

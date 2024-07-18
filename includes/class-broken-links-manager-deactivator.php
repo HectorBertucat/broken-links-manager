@@ -20,24 +20,41 @@ class Broken_Links_Manager_Deactivator {
      */
     public static function deactivate() {
         // Perform any necessary cleanup here
-        // For example, you might want to remove the database table if you don't want to persist the data
+        self::maybe_delete_tables();
+        self::clean_logs();
         
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'broken_links';
-        $sql = "DROP TABLE IF EXISTS $table_name";
-        $wpdb->query($sql);
-        
-        // Note: Uncomment the above lines if you want to remove the table on deactivation
-        // Be cautious about removing data, as users might expect it to persist
-
         // Clear any scheduled cron jobs if you've set any
         wp_clear_scheduled_hook('broken_links_manager_cron');
 
-        // Optionally, you can also clear the logs
-        $upload_dir = wp_upload_dir();
-        $log_file = $upload_dir['basedir'] . '/broken-links-manager-log.txt';
-        if (file_exists($log_file)) {
-            unlink($log_file);
+        // Remove any options we've set
+        delete_option('blm_scan_status');
+        delete_option('blm_db_version');
+    }
+
+    /**
+     * Delete plugin tables if the user chooses to do so.
+     * 
+     * In a real-world scenario, you might want to add a setting in your plugin's
+     * options page to allow users to choose whether they want to delete the data
+     * upon deactivation. For now, we'll just delete the tables.
+     */
+    private static function maybe_delete_tables() {
+        global $wpdb;
+        $tables = array(
+            $wpdb->prefix . 'blm_posts',
+            $wpdb->prefix . 'blm_links'
+        );
+
+        foreach ($tables as $table) {
+            $wpdb->query("DROP TABLE IF EXISTS $table");
         }
+    }
+
+    /**
+     * Clean up the logs created by the plugin.
+     */
+    private static function clean_logs() {
+        $logger = new Logger();
+        $logger->clear_logs();
     }
 }

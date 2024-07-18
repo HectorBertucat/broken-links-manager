@@ -16,18 +16,20 @@
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
     <div id="blm-actions">
-        <button id="blm-scan-links" class="button button-primary">Start Scan</button>
-        <button id="blm-stop-scan" class="button" style="display:none;">Stop Scan</button>
+        <button id="blm-pre-scan" class="button button-primary">Start Pre-Scan</button>
+        <button id="blm-stop-pre-scan" class="button" style="display:none;">Stop Pre-Scan</button>
+        <button id="blm-check-links" class="button button-primary" style="display:none;">Check Links</button>
+        <button id="blm-stop-check-links" class="button" style="display:none;">Stop Checking Links</button>
     </div>
 
     <div id="blm-progress" style="display:none;">
         <h3>Scan Progress</h3>
-        <div>
+        <div id="blm-pre-scan-progress">
             <label>Posts Scanned:</label>
             <progress id="blm-posts-progress" value="0" max="100"></progress>
             <span id="blm-posts-progress-text">0 / 0</span>
         </div>
-        <div>
+        <div id="blm-link-check-progress" style="display:none;">
             <label>Links Checked:</label>
             <progress id="blm-links-progress" value="0" max="100"></progress>
             <span id="blm-links-progress-text">0 / 0</span>
@@ -38,7 +40,7 @@
         <h2>Scanned Links</h2>
         <div id="blm-filters">
             <label>
-                <input type="checkbox" id="blm-show-errors-only"> Show Errors Only
+                <input type="checkbox" checked="true" id="blm-show-errors-only"> Show Errors Only
             </label>
         </div>
         <div id="blm-bulk-actions">
@@ -53,10 +55,10 @@
                 <tr>
                     <th><input type="checkbox" id="blm-select-all"></th>
                     <th>Post ID</th>
-                    <th>URL</th>
+                    <th>Page</th>
+                    <th>URL of link</th>
+                    <th>Content of 'a' tag</th>
                     <th>Status Code</th>
-                    <th>Found Date</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="blm-results-body">

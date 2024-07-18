@@ -11,6 +11,78 @@ class Broken_Links_Scanner {
         $this->logger = $logger;
     }
 
+    public function pre_scan_post($post) {
+        $this->logger->log("Pre-Scanner: Starting scan for post ID: {$post->ID}");
+
+        $this->store_post($post);
+
+        $content = $post->post_content;
+        if (empty($content)) {
+            $this->logger->log("Pre-Scanner: Post {$post->ID} has no content to scan.");
+            return 0;
+        }
+
+        $dom = new DOMDocument();
+        @$dom->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'));
+        $links = $dom->getElementsByTagName('a');
+
+        $links_found = 0;
+
+        foreach ($links as $link) {
+            $href = $link->getAttribute('href');
+            $text = $link->textContent;
+            if ($href && filter_var($href, FILTER_VALIDATE_URL)) {
+                $this->store_link($post->ID, $href, $text);
+                $links_found++;
+            }
+        }
+
+        $this->logger->log("Pre-Scanner: Completed scan for post ID: {$post->ID}. Links found: {$links_found}");
+        return $links_found;
+    }
+
+    private function store_post($post) {
+        $table_name = $this->db->prefix . 'blm_posts';
+        $this->db->replace(
+            $table_name,
+            array(
+                'wordpress_id' => $post->ID,
+                'title' => $post->post_title,
+                'public_link' => get_permalink($post->ID),
+                'date_last_scanned' => current_time('mysql')
+            ),
+            array('%d', '%s', '%s', '%s')
+        );
+    }
+
+    private function check_link_status($url) {
+        $this->logger->log("Scanner: Checking status for URL: {$url}");
+        $response = wp_remote_head($url, array('timeout' => 5, 'sslverify' => false));
+        if (is_wp_error($response)) {
+            $this->logger->log("Scanner: Error checking {$url}: " . $response->get_error_message());
+            return 0; // Use 0 to indicate an error occurred
+        }
+        $status_code = wp_remote_retrieve_response_code($response);
+        $this->logger->log("Scanner: Status code received for {$url}: {$status_code}");
+        return $status_code;
+    }
+
+    private function update_link_status($url, $status_code) {
+        $table_name = $this->db->prefix . 'blm_links';
+        $this->db->update(
+            $table_name,
+            array('status' => $status_code),
+            array('link' => $url),
+            array('%d'),
+            array('%s')
+        );
+    }
+
+    public function get_unchecked_links_count() {
+        $table_name = $this->db->prefix . 'blm_links';
+        return $this->db->get_var("SELECT COUNT(DISTINCT link) FROM $table_name WHERE status IS NULL");
+    }
+
     public function start_scan() {
         $this->logger->log('Starting broken links scan');
         $total_posts = $this->get_total_posts();
@@ -21,6 +93,28 @@ class Broken_Links_Scanner {
         }
 
         $this->logger->log('Broken links scan completed');
+    }
+
+    public function check_links_batch($batch_size) {
+        $table_name = $this->db->prefix . 'blm_links';
+        $links = $this->db->get_results($this->db->prepare(
+            "SELECT DISTINCT link FROM $table_name WHERE status IS NULL LIMIT %d",
+            $batch_size
+        ));
+
+        $checked_count = 0;
+        foreach ($links as $link) {
+            $status_code = $this->check_link_status($link->link);
+            $this->update_link_status($link->link, $status_code);
+            $checked_count++;
+        }
+
+        return $checked_count;
+    }
+
+    public function get_total_links_count() {
+        $table_name = $this->db->prefix . 'blm_links';
+        return $this->db->get_var("SELECT COUNT(DISTINCT link) FROM $table_name");
     }
 
     private function get_total_posts() {
@@ -81,37 +175,18 @@ class Broken_Links_Scanner {
         return array('links_found' => $links_found, 'links_checked' => $links_checked);
     }
 
-    private function check_link_status($url) {
-        $this->logger->log("Scanner: Checking status for URL: {$url}");
-        $response = wp_remote_head($url, array('timeout' => 5, 'sslverify' => false));
-        if (is_wp_error($response)) {
-            $this->logger->log("Scanner: Error checking {$url}: " . $response->get_error_message());
-            return 0; // Use 0 to indicate an error occurred
-        }
-        $status_code = wp_remote_retrieve_response_code($response);
-        $this->logger->log("Scanner: Status code received for {$url}: {$status_code}");
-        return $status_code;
-    }
-
-    private function store_link($post_id, $url, $status_code) {
-        $this->logger->log("Scanner: Storing link for post ID: {$post_id}, URL: {$url}, Status Code: {$status_code}");
-        $table_name = $this->db->prefix . 'broken_links';
-        $result = $this->db->insert(
+    private function store_link($post_id, $url, $text) {
+        $table_name = $this->db->prefix . 'blm_links';
+        $this->db->insert(
             $table_name,
             array(
-                'post_id' => $post_id,
-                'url' => $url,
-                'status_code' => $status_code,
-                'found_date' => current_time('mysql')
+                'wordpress_id' => $post_id,
+                'link' => $url,
+                'text_of_link' => $text,
+                'status' => null
             ),
-            array('%d', '%s', '%d', '%s')
+            array('%d', '%s', '%s', '%d')
         );
-
-        if ($result) {
-            $this->logger->log("Scanner: Successfully stored link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
-        } else {
-            $this->logger->log("Scanner: Failed to store link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
-        }
     }
 
     public function count_links_in_post($post) {

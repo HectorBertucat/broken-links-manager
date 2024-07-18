@@ -10,7 +10,8 @@ class Broken_Links_Remover {
         $this->logger = $logger;
     }
 
-    public function remove_link($post_id, $url) {
+    public function remove_link($id, $post_id, $url) {
+        $this->logger->log("REMOVE LINK function: Removing link: ID {$id}, Post ID {$post_id}, URL {$url}");
         $post = get_post($post_id);
         if (!$post) {
             $this->logger->log("Error: Post with ID {$post_id} not found.");
@@ -28,13 +29,14 @@ class Broken_Links_Remover {
             $this->logger->log("Link removed from post content: Post ID {$post_id}, URL {$url}");
         }
 
-        $this->remove_from_database($post_id, $url);
+        $this->logger->log("REMOVE LINK beggin remove databse: ID {$id}, Post ID {$post_id}, URL {$url}");
+        $this->remove_from_database($post_id, $url, $id);
         return true;
     }
 
     public function bulk_remove_links($links) {
         foreach ($links as $link) {
-            $this->remove_link($link['post_id'], $link['url']);
+            $this->remove_link($link['id'], $link['post_id'], $link['url']);
         }
     }
 
@@ -55,13 +57,12 @@ class Broken_Links_Remover {
         return $dom->saveHTML();
     }
 
-    private function remove_from_database($post_id, $url) {
-        $table_name = $this->db->prefix . 'broken_links';
-        $this->db->delete(
-            $table_name,
-            array('post_id' => $post_id, 'url' => $url),
-            array('%d', '%s')
-        );
+    private function remove_from_database($post_id, $url, $id) {
+        $table_name = $this->db->prefix . 'blm_links';
+
+        $delete_from_db_query = "DELETE FROM $table_name WHERE id = %d";
+        $this->logger($delete_from_db_query);
+        $this->db->query($this->db->prepare($delete_from_db_query, $id));
         $this->logger->log("Link removed from database: Post ID {$post_id}, URL {$url}");
     }
 }
