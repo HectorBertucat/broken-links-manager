@@ -51,7 +51,7 @@ class Broken_Links_Scanner {
         $content = $post->post_content;
         if (empty($content)) {
             $this->logger->log("Scanner: Post {$post->ID} has no content to scan.");
-            return false;
+            return array('links_found' => 0, 'links_checked' => 0);
         }
 
         $dom = new DOMDocument();
@@ -60,21 +60,25 @@ class Broken_Links_Scanner {
 
         $this->logger->log("Scanner: Found " . $links->length . " links in post {$post->ID}");
 
-        $links_found = false;
+        $links_found = 0;
+        $links_checked = 0;
 
         foreach ($links as $link) {
             $href = $link->getAttribute('href');
             if ($href) {
+                $links_checked++;
                 $this->logger->log("Scanner: Checking link: {$href}");
                 $status_code = $this->check_link_status($href);
                 $this->logger->log("Scanner: Status code for {$href}: {$status_code}");
                 $this->store_link($post->ID, $href, $status_code);
-                $links_found = true;
+                if ($status_code >= 400 || $status_code == 0) {
+                    $links_found++;
+                }
             }
         }
 
-        $this->logger->log("Scanner: Completed scan for post ID: {$post->ID}. Links found: " . ($links_found ? "Yes" : "No"));
-        return $links_found;
+        $this->logger->log("Scanner: Completed scan for post ID: {$post->ID}. Broken links found: {$links_found}");
+        return array('links_found' => $links_found, 'links_checked' => $links_checked);
     }
 
     private function check_link_status($url) {
@@ -108,6 +112,19 @@ class Broken_Links_Scanner {
         } else {
             $this->logger->log("Scanner: Failed to store link: Post ID {$post_id}, URL {$url}, Status Code {$status_code}");
         }
+    }
+
+    public function count_links_in_post($post) {
+        $content = $post->post_content;
+        if (empty($content)) {
+            return 0;
+        }
+
+        $dom = new DOMDocument();
+        @$dom->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'));
+        $links = $dom->getElementsByTagName('a');
+
+        return $links->length;
     }
 
     public function verify_stored_links() {

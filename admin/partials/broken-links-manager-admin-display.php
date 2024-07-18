@@ -16,11 +16,31 @@
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
     <div id="blm-actions">
-        <button id="blm-scan-links" class="button button-primary">Scan for Links</button>
+        <button id="blm-scan-links" class="button button-primary">Start Scan</button>
+        <button id="blm-stop-scan" class="button" style="display:none;">Stop Scan</button>
+    </div>
+
+    <div id="blm-progress" style="display:none;">
+        <h3>Scan Progress</h3>
+        <div>
+            <label>Posts Scanned:</label>
+            <progress id="blm-posts-progress" value="0" max="100"></progress>
+            <span id="blm-posts-progress-text">0 / 0</span>
+        </div>
+        <div>
+            <label>Links Checked:</label>
+            <progress id="blm-links-progress" value="0" max="100"></progress>
+            <span id="blm-links-progress-text">0 / 0</span>
+        </div>
     </div>
 
     <div id="blm-results">
         <h2>Scanned Links</h2>
+        <div id="blm-filters">
+            <label>
+                <input type="checkbox" id="blm-show-errors-only"> Show Errors Only
+            </label>
+        </div>
         <div id="blm-bulk-actions">
             <select id="blm-bulk-action">
                 <option value="">Bulk Actions</option>
@@ -43,16 +63,9 @@
                 <!-- Results will be populated here via JavaScript -->
             </tbody>
         </table>
-    </div>
-
-    <div id="blm-bulk-actions">
-        <h2>Bulk Actions</h2>
-        <select id="blm-status-code">
-            <option value="403">403 Forbidden</option>
-            <option value="404">404 Not Found</option>
-            <option value="500">500 Server Error</option>
-        </select>
-        <button id="blm-bulk-remove" class="button">Remove All Links with Selected Status Code</button>
+        <div id="blm-pagination">
+            <!-- Pagination will be added here via JavaScript -->
+        </div>
     </div>
 
     <div id="blm-logs">

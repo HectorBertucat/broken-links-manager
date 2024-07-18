@@ -7,9 +7,38 @@
     margin-bottom: 20px;
 }
 
+#blm-progress {
+    margin-bottom: 20px;
+    background: #f9f9f9;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+    border-radius: 3px;
+}
+
+#blm-progress h3 {
+    margin-top: 0;
+}
+
+#blm-progress div {
+    margin-bottom: 10px;
+}
+
+#blm-progress label {
+    display: inline-block;
+    width: 120px;
+    font-weight: bold;
+}
+
+progress {
+    width: 70%;
+    height: 20px;
+    margin-right: 10px;
+}
+
 #blm-results table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 20px;
 }
 
 #blm-results th,
@@ -40,6 +69,34 @@
     margin-right: 10px;
 }
 
+#blm-filters {
+    margin-bottom: 15px;
+}
+
+#blm-pagination {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.page-numbers {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 0 2px;
+    border: 1px solid #ddd;
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.page-numbers.current {
+    background-color: #0073aa;
+    color: white;
+    border-color: #0073aa;
+}
+
+.blm-link-checkbox {
+    margin-right: 5px;
+}
+
 #blm-logs {
     margin-top: 20px;
 }
@@ -54,6 +111,11 @@
     background-color: #f9f9f9;
 }
 
-.blm-link-checkbox {
-    margin-right: 5px;
+#blm-scan-links, #blm-stop-scan {
+    font-size: 14px;
+    padding: 8px 15px;
+}
+
+#blm-apply-bulk-action {
+    vertical-align: middle;
 }

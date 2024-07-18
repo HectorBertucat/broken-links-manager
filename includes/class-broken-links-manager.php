@@ -59,24 +59,39 @@ class Broken_Links_Manager {
         $logger = new Logger();
         $logger->log('Scan initiated via AJAX');
 
-        // Clear existing links before new scan
-        $this->clear_existing_links();
+        $batch_size = 10; // Number of posts to scan in each batch
+        $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+
+        $total_posts = wp_count_posts()->publish;
+        $posts = get_posts(array('posts_per_page' => $batch_size, 'offset' => $offset, 'post_type' => 'any', 'post_status' => 'publish'));
 
         $scanner = new Broken_Links_Scanner($logger);
-        
-        $posts = get_posts(array('posts_per_page' => -1, 'post_type' => 'any'));
-        $logger->log('Found ' . count($posts) . ' posts to scan');
-
         $links_found = 0;
+        $links_checked = 0;
+        $total_links = 0;
 
         foreach ($posts as $post) {
-            if ($scanner->scan_post_content($post)) {
-                $links_found++;
+            $post_links = $scanner->count_links_in_post($post);
+            $total_links += $post_links;
+            $result = $scanner->scan_post_content($post);
+            if ($result['links_found'] > 0) {
+                $links_found += $result['links_found'];
             }
+            $links_checked += $result['links_checked'];
         }
-        
-        $logger->log("Scan completed. Found links in {$links_found} posts.");
-        wp_send_json_success("Scan completed. Found links in {$links_found} posts.");
+
+        $progress = array(
+            'posts_scanned' => count($posts),
+            'total_posts' => $total_posts,
+            'links_found' => $links_found,
+            'links_checked' => $links_checked,
+            'total_links' => $total_links,
+            'offset' => $offset + count($posts),
+            'is_complete' => ($offset + count($posts) >= $total_posts)
+        );
+
+        $logger->log("Batch scan completed. Progress: " . json_encode($progress));
+        wp_send_json_success($progress);
     }
 
     public function ajax_remove_link() {
@@ -119,7 +134,18 @@ class Broken_Links_Manager {
 
         global $wpdb;
         $table_name = $wpdb->prefix . 'broken_links';
-        $links = $wpdb->get_results("SELECT * FROM $table_name ORDER BY found_date DESC LIMIT 1000");
+
+        $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+        $per_page = 50;
+        $offset = ($page - 1) * $per_page;
+
+        $where_clause = "";
+        if (isset($_POST['show_errors_only']) && $_POST['show_errors_only'] === 'true') {
+            $where_clause = "WHERE status_code >= 400 OR status_code = 0";
+        }
+
+        $total_links = $wpdb->get_var("SELECT COUNT(*) FROM $table_name $where_clause");
+        $links = $wpdb->get_results("SELECT * FROM $table_name $where_clause ORDER BY found_date DESC LIMIT $offset, $per_page");
 
         $html = '';
         foreach ($links as $link) {
@@ -134,7 +160,11 @@ class Broken_Links_Manager {
             $html .= "</tr>";
         }
 
-        wp_send_json_success($html);
+        wp_send_json_success(array(
+            'html' => $html,
+            'total_pages' => ceil($total_links / $per_page),
+            'current_page' => $page
+        ));
     }
 
     public function ajax_check_scan_status() {
