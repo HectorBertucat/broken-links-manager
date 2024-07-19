@@ -22,16 +22,31 @@ class Broken_Links_Scanner {
             return 0;
         }
 
-        $dom = new DOMDocument();
-        @$dom->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'));
-        $links = $dom->getElementsByTagName('a');
-
         $links_found = 0;
+
+        // Use DOMDocument for well-formed HTML
+        $dom = new DOMDocument();
+        @$dom->loadHTML(mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $links = $dom->getElementsByTagName('a');
 
         foreach ($links as $link) {
             $href = $link->getAttribute('href');
             $text = $link->textContent;
-            if ($href && filter_var($href, FILTER_VALIDATE_URL)) {
+            if ($this->is_valid_link($href)) {
+                $this->store_link($post->ID, $href, $text);
+                $links_found++;
+            }
+        }
+
+        // Use regex to catch links that might be missed by DOMDocument
+        preg_match_all('/<a\s+(?:[^>]*?\s+)?href=(["\'])(.*?)\1/i', $content, $matches);
+        foreach ($matches[2] as $index => $href) {
+            if ($this->is_valid_link($href)) {
+                // Extract text content (this is a simple approach and might not work for all cases)
+                $text = '';
+                if (preg_match('/<a\s+(?:[^>]*?\s+)?href=(["\'])' . preg_quote($href, '/') . '\1[^>]*>(.*?)<\/a>/i', $content, $text_match)) {
+                    $text = strip_tags($text_match[2]);
+                }
                 $this->store_link($post->ID, $href, $text);
                 $links_found++;
             }
@@ -39,6 +54,20 @@ class Broken_Links_Scanner {
 
         $this->logger->log("Pre-Scanner: Completed scan for post ID: {$post->ID}. Links found: {$links_found}");
         return $links_found;
+    }
+
+    private function is_valid_link($href) {
+        // Check if it's a full URL
+        if (filter_var($href, FILTER_VALIDATE_URL)) {
+            return true;
+        }
+
+        // Check if it's a relative URL (starting with '/' or not starting with 'http')
+        if (strpos($href, '/') === 0 || strpos($href, 'http') !== 0) {
+            return true;
+        }
+
+        return false;
     }
 
     private function store_post($post) {
@@ -187,6 +216,7 @@ class Broken_Links_Scanner {
             ),
             array('%d', '%s', '%s', '%d')
         );
+        $this->logger->log("Stored link: Post ID {$post_id}, URL {$url}");
     }
 
     public function count_links_in_post($post) {

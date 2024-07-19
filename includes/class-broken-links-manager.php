@@ -98,15 +98,27 @@ class Broken_Links_Manager {
     }
 
     public function ajax_remove_link() {
-        $logger = new Logger();
         check_ajax_referer('broken_links_manager_nonce', 'security');
 
-        $link_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
-        $logger->log('Remove link initiated TEST where id is: ' . $link_id);
+        $link_id = isset($_POST['link_id']) ? intval($_POST['link_id']) : 0;
+
+        $this->logger->log("AJAX remove_link called with link_id: $link_id");
 
         if (!$link_id) {
+            $this->logger->log("Error: Invalid link ID received");
             wp_send_json_error('Invalid link ID');
             return;
+        }
+
+        $scanner = new Broken_Links_Scanner($this->logger);
+        $result = $scanner->remove_from_database($link_id);
+
+        if ($result) {
+            $this->logger->log("Link removal successful for ID: $link_id");
+            wp_send_json_success('Link removed successfully');
+        } else {
+            $this->logger->log("Link removal failed for ID: $link_id");
+            wp_send_json_error('Failed to remove link');
         }
     }
 
@@ -223,10 +235,7 @@ class Broken_Links_Manager {
         $show_errors_only = isset($_POST['show_errors_only']) ? $_POST['show_errors_only'] === 'true' : false;
         $logger->log("Show errors only: " . ($show_errors_only ? 'true' : 'false'));
 
-        $where_clause = "WHERE l.date_deleted IS NULL";
-        if ($show_errors_only) {
-            $where_clause .= " AND (l.status >= 400 OR l.status = 0)";
-        }
+        $where_clause = $show_errors_only ? "WHERE l.status >= 400 OR l.status = 0" : "";
 
         $total_links_query = "
             SELECT COUNT(DISTINCT l.link) 

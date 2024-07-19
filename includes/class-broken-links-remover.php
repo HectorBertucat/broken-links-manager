@@ -30,7 +30,7 @@ class Broken_Links_Remover {
         }
 
         $this->logger->log("REMOVE LINK beggin remove databse: ID {$id}, Post ID {$post_id}, URL {$url}");
-        $this->remove_from_database($post_id, $url, $id);
+        $this->remove_from_database($id);
         return true;
     }
 
@@ -57,12 +57,38 @@ class Broken_Links_Remover {
         return $dom->saveHTML();
     }
 
-    private function remove_from_database($post_id, $url, $id) {
-        $table_name = $this->db->prefix . 'blm_links';
+    private function remove_from_database($link_id) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'blm_links';
+        
+        $this->logger->log("Attempting to delete link with ID: $link_id");
+        
+        // Check if the link exists before attempting to delete
+        $link = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $link_id));
+        if (!$link) {
+            $this->logger->log("Error: Link with ID $link_id not found in the database.");
+            return false;
+        }
+        
+        $result = $wpdb->delete(
+            $table_name,
+            array('id' => $link_id),
+            array('%d')
+        );
 
-        $delete_from_db_query = "DELETE FROM $table_name WHERE id = %d";
-        $this->logger($delete_from_db_query);
-        $this->db->query($this->db->prepare($delete_from_db_query, $id));
-        $this->logger->log("Link removed from database: Post ID {$post_id}, URL {$url}");
+        $this->logger->log("Checking if link still exists after deletion...");
+        $link_check = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE id = %d", $link_id));
+        $this->logger->log("Link check result: " . ($link_check ? "Link still exists" : "Link successfully deleted"));
+    
+        if ($result === false) {
+            $this->logger->log("Error: Failed to delete link (ID: $link_id). Database error: " . $wpdb->last_error);
+            return false;
+        } elseif ($result === 0) {
+            $this->logger->log("Warning: No rows affected when trying to delete link (ID: $link_id).");
+            return false;
+        } else {
+            $this->logger->log("Success: Link (ID: $link_id) deleted from the database. Rows affected: $result");
+            return true;
+        }
     }
 }
